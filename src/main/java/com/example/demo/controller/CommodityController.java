@@ -1,10 +1,24 @@
 package com.example.demo.controller;
 
+import com.alibaba.fastjson.JSONObject;
+import com.example.demo.enums.RestStatusEnum;
+import com.example.demo.model.RestEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * @author haocun li
+ * @date created in 2018/10/23 22:05
+ * @since 1.0.0
+ */
 
 
 
@@ -30,6 +44,57 @@ public class CommodityController {
     @Autowired
     BuyRepository buyRepository;
 
+    //向指定的资源提交要被处理的数据
+    //upload the commodity picture
+	@PostMapping(value="/upload")
+	public RestEntity release(MultipartFile file) {
+	        try {
+            String  fileName = this.fileUploadService.photoUpload(file);
+            return RestEntity.ok(fileName);
+        } catch (IOException e) {
+            return RestEntity.error(RestStatusEnum.UPLOAD_IMAGE__ERROR,e);
+        }
+	}
+
+    //从指定的资源请求数据
+    /*
+    value的uri值为以下三类：
+    A）可以指定为普通的具体值；
+    B) 可以指定为含有某变量的一类值(URI Template Patterns with Path Variables)；
+    C) 可以指定为含正则表达式的一类值( URI Template Patterns with Regular Expressions);
+     */
+    @GetMapping(value="/obtain/{username}/{pageSize}/{pageIndex}")
+    //paramId可通过 @Pathvariable注解绑定它传过来的值到方法的参数上
+    public RestEntity obtain(@PathVariable String username, @PathVariable Integer pageSize, @PathVariable Integer pageIndex) {
+        PageRequest pageRequest = new PageRequest(pageIndex-1,pageSize);
+        Page<CommodityDTO> commodityDTOS = this.commodityRepository.findAllByUsername(username,pageRequest);
+        return RestEntity.ok(commodityDTOS);
+	}
+
+    //添加商品
+    @PostMapping(value="/add")
+    public RestEntity add(@RequestBody CommodityDTO commodityDTO) {
+        String id = commodityDTO.getId();//id of commodity
+        CommodityDTO oldCommodityDTO = this.commodityRepository.findOne(id);//check whether the commodity exists or not
+        if (oldCommodityDTO != null){
+            return RestEntity.ok(RestStatusEnum.RELEASE_ERROR);
+        }else {
+            //The commodity is not existing, add it
+            this.commodityRepository.save(commodityDTO);
+        }
+        return RestEntity.ok(RestStatusEnum.RELEASE_SUCCESS,null,id);
+	}
+
+    //查询商品
+    @GetMapping("/getDetail/{id}")
+    public RestEntity getDetail(@PathVariable String id){
+        CommodityDTO commodityDTOS = this.commodityRepository.findOne(id);
+        List<CommentDTO> commentDTOS = this.commentRepository.findAllByCommodity(id);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("commodity",commodityDTOS);
+        jsonObject.put("comment",commentDTOS);
+        return RestEntity.ok(jsonObject);
+    }
 
     /**
      * @author Xiang Li

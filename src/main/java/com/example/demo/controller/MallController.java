@@ -42,4 +42,30 @@ public class MallController {
         Page<BuyDTO> buyDTOS =  this.buyRepository.findAllByUsername(username,pageRequest);
         return RestEntity.ok(buyDTOS);
     }
+    
+    /**
+     * @author Haocun Li
+     * @date created in 2018/10/24 12:50
+     * @since 1.0.0
+     */
+    
+    @GetMapping("/listCommodityDTO/{category}")
+    public RestEntity listCommodityDTO(@PathVariable String category){
+        List<CommodityDTO> commodityDTOS = this.commodityRepository.findAll();
+        //获取库存不为0的商品
+        commodityDTOS = commodityDTOS.stream().filter(commodityDTO -> commodityDTO.getLave() != 0)
+                .filter(commodityDTO -> commodityDTO.getCategory().equals(category)).collect(Collectors.toList());
+        return RestEntity.ok(commodityDTOS);
+    }
+    
+    @GetMapping("/listCommodityDTO/{category}/{keyword}")
+    public RestEntity listCommodityDTO(@PathVariable String category,@PathVariable String keyword){
+        List<CommodityDTO> commodityDTOS = this.commodityRepository.findAll();
+        //获取库存不为0的商品
+        commodityDTOS = commodityDTOS.stream().filter(commodityDTO -> commodityDTO.getLave() != 0)
+                .filter(commodityDTO -> commodityDTO.getCategory().equals(category))
+                .filter(commodityDTO -> commodityDTO.getName().indexOf(keyword) != -1).collect(Collectors.toList());
+        return RestEntity.ok(commodityDTOS);
+    }
+
 }

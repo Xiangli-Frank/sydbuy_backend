@@ -103,7 +103,100 @@ public class CommodityController {
         return RestEntity.ok(RestStatusEnum.OK);
 	}
 
+	/**
+     	* @author Haocun Li
+     	* @date created in 2018/10/22 21:49
+     	* @since 1.0.0
+     	*/
 
+    @PostMapping(value="/upload")
+    public RestEntity release(MultipartFile file) {
+        try {
+            String  fileName = this.fileUploadService.photoUpload(file);
+            return RestEntity.ok(fileName);
+        } catch (IOException e) {
+            return RestEntity.error(RestStatusEnum.UPLOAD_IMAGE__ERROR,e);
+        }
 
+    }
+	
+    @GetMapping(value="/obtain/{username}/{pageSize}/{pageIndex}")
+    public RestEntity obtain(@PathVariable String username, @PathVariable Integer pageSize, @PathVariable Integer pageIndex) {
+        PageRequest pageRequest = new PageRequest(pageIndex-1,pageSize);
+        Page<CommodityDTO> commodityDTOS = this.commodityRepository.findAllByUsername(username,pageRequest);
+        return RestEntity.ok(commodityDTOS);
+    }
+
+    /**
+     * description: <br>
+     发布商品
+     * @para: a
+     * @eturn: a
+     * @method：a
+     */
+
+    @PostMapping(value="/add")
+    public RestEntity add(@RequestBody CommodityDTO commodityDTO) {
+        String id = commodityDTO.getId();//手动控制商品id
+        CommodityDTO oldCommodityDTO = this.commodityRepository.findOne(id);//检查数据库是否存在商品
+        if (oldCommodityDTO != null){
+            return RestEntity.ok(RestStatusEnum.RELEASE_ERROR);
+        }else {
+            //商品不存在，进行新增
+            this.commodityRepository.save(commodityDTO);
+        }
+        return RestEntity.ok(RestStatusEnum.RELEASE_SUCCESS,null,id);
+    }
+	
+    @GetMapping("/listOrder/{pageSize}/{pageIndex}")
+    public RestEntity listAllBuyDTO(@PathVariable Integer pageSize,@PathVariable Integer pageIndex){
+        PageRequest pageRequest = new PageRequest(pageIndex-1,pageSize);
+        Page<BuyDTO> buyDTOS =  this.buyRepository.findAll(pageRequest);
+        return RestEntity.ok(buyDTOS);
+    }
+    @PostMapping("/okOrder/{id}/{commodity}/{count}")
+    @Transactional
+    public RestEntity okOrder(@PathVariable Integer id,@PathVariable String commodity,@PathVariable Integer count){
+        //查询库存
+        CommodityDTO commodityDTO = this.commodityRepository.findOne(commodity);
+        Integer lave = commodityDTO.getLave();
+        if (lave < count){
+            return RestEntity.error(RestStatusEnum.INVENTORY_SHORTAGE,null);
+        }
+        //库存减少 更新入库
+        commodityDTO.setSell(count);
+        lave = lave-count;
+        commodityDTO.setLave(lave);
+        this.commodityRepository.save(commodityDTO);
+        //改变购买状态
+        BuyDTO buyDTO = this.buyRepository.findOne(id);
+        buyDTO.setState("success");
+        this.buyRepository.save(buyDTO);
+        return RestEntity.ok(RestStatusEnum.OK);
+    }
+    @PostMapping("/cancleOrder/{id}")
+    public RestEntity cancleOrder(@PathVariable Integer id){
+        BuyDTO buyDTO = this.buyRepository.findOne(id);
+        buyDTO.setState("fail");
+        this.buyRepository.save(buyDTO);
+        return RestEntity.ok(RestStatusEnum.OK);
+    }
+    /**
+     * description: <br>
+     *     商品详情
+     * @para: a
+     * @eturn: a
+     * @method：a
+     */
+
+    @GetMapping("/getDetail/{id}")
+    public RestEntity getDetail(@PathVariable String id){
+        CommodityDTO commodityDTOS = this.commodityRepository.findOne(id);
+        List<CommentDTO> commentDTOS = this.commentRepository.findAllByCommodity(id);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("commodity",commodityDTOS);
+        jsonObject.put("comment",commentDTOS);
+        return RestEntity.ok(jsonObject);
+    }
 	 
 }
